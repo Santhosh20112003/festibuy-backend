@@ -1,753 +1,124 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FestiBuy - Nearby Shop Explorer (PostGIS + Leaflet)</title>
-    
+    <title>FestiBuy - Nearby Shop Explorer</title>
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 
     <style>
-        :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --primary-light: #818cf8;
-            --accent: #ec4899;
-            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
-            --bg-body: #0f172a;
-            --surface-dark: #1e293b;
-            --surface-card: rgba(30, 41, 59, 0.85);
-            --surface-card-hover: #334155;
-            --border-color: rgba(255, 255, 255, 0.1);
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --shadow-glow: 0 10px 25px -5px rgba(99, 102, 241, 0.3);
-            --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        body {
-            background-color: var(--bg-body);
-            color: var(--text-main);
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        /* Top Header */
-        header {
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border-color);
-            padding: 0.85rem 1.75rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 0.85rem;
-        }
-
-        .brand-logo {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            background: var(--accent-gradient);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.25rem;
-            box-shadow: var(--shadow-glow);
-        }
-
-        .brand-title {
-            font-size: 1.2rem;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .brand-subtitle {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-weight: 600;
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .api-badge {
-            display: flex;
-            align-items: center;
-            gap: 0.45rem;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 0.4rem 0.85rem;
-            border-radius: 20px;
-            border: 1px solid var(--border-color);
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: var(--warning);
-            box-shadow: 0 0 8px var(--warning);
-            transition: all 0.3s ease;
-        }
-
-        .status-dot.online {
-            background-color: var(--success);
-            box-shadow: 0 0 8px var(--success);
-        }
-
-        .status-dot.offline {
-            background-color: var(--danger);
-            box-shadow: 0 0 8px var(--danger);
-        }
-
-        /* Main Workspace Layout */
-        .main-container {
-            display: flex;
-            flex: 1;
-            height: calc(100vh - 65px);
-            position: relative;
-        }
-
-        /* Sidebar Controls */
-        .sidebar {
-            width: 420px;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(16px);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            z-index: 500;
-            overflow-y: auto;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .sidebar-section {
-            padding: 1.25rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .section-title {
-            font-size: 0.82rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--primary-light);
-            font-weight: 700;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        /* Form Controls */
-        .input-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-            margin-bottom: 0.85rem;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-        }
-
-        .form-group.full-width {
-            grid-column: span 2;
-        }
-
-        label {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .input-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-wrapper i {
-            position: absolute;
-            left: 0.75rem;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-        }
-
-        input[type="number"],
-        input[type="text"] {
-            width: 100%;
-            background: rgba(30, 41, 59, 0.9);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 0.6rem 0.75rem 0.6rem 2.2rem;
-            color: var(--text-main);
-            font-size: 0.85rem;
-            font-weight: 500;
-            outline: none;
-            transition: all 0.2s ease;
-        }
-
-        input[type="number"]:focus,
-        input[type="text"]:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
-            background: rgba(30, 41, 59, 1);
-        }
-
-        /* Radius Slider */
-        .slider-container {
-            margin-top: 0.5rem;
-            background: rgba(30, 41, 59, 0.6);
-            padding: 0.75rem 0.85rem;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-color);
-        }
-
-        .slider-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.4rem;
-        }
-
-        .radius-val-badge {
-            background: var(--accent-gradient);
-            color: white;
-            padding: 0.15rem 0.5rem;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 700;
-        }
-
-        input[type="range"] {
-            width: 100%;
-            height: 6px;
-            border-radius: 5px;
-            background: #334155;
-            outline: none;
-            cursor: pointer;
-            accent-color: var(--primary);
-        }
-
-        /* Preset Chips */
-        .preset-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.4rem;
-            margin-top: 0.75rem;
-        }
-
-        .chip {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
-            padding: 0.3rem 0.6rem;
-            border-radius: 16px;
-            font-size: 0.72rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-        }
-
-        .chip:hover {
-            background: rgba(99, 102, 241, 0.15);
-            border-color: var(--primary-light);
-            color: white;
-            transform: translateY(-1px);
-        }
-
-        /* Buttons */
-        .btn-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.6rem;
-            margin-top: 0.75rem;
-        }
-
-        .btn {
-            border: none;
-            border-radius: var(--radius-md);
-            padding: 0.7rem 1rem;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn-primary {
-            background: var(--accent-gradient);
-            color: white;
-            box-shadow: var(--shadow-glow);
-            grid-column: span 2;
-        }
-
-        .btn-secondary {
-            background: rgba(30, 41, 59, 0.9);
-            color: var(--text-main);
-            border: 1px solid var(--border-color);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(51, 65, 85, 1);
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .btn-sm {
-            padding: 0.4rem 0.75rem;
-            font-size: 0.75rem;
-            border-radius: 8px;
-        }
-
-        /* Results Section */
-        .results-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.85rem;
-        }
-
-        .count-badge {
-            background: rgba(99, 102, 241, 0.2);
-            color: var(--primary-light);
-            border: 1px solid rgba(99, 102, 241, 0.4);
-            padding: 0.15rem 0.5rem;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 700;
-        }
-
-        .shops-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            padding-bottom: 1.5rem;
-        }
-
-        .shop-card {
-            background: var(--surface-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 0.9rem;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .shop-card::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background: var(--primary);
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-
-        .shop-card:hover, .shop-card.active {
-            background: var(--surface-card-hover);
-            border-color: rgba(99, 102, 241, 0.5);
-            transform: translateX(3px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .shop-card:hover::before, .shop-card.active::before {
-            opacity: 1;
-        }
-
-        .shop-card-title {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.5rem;
-        }
-
-        .distance-pill {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            padding: 0.2rem 0.5rem;
-            border-radius: 12px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-
-        .shop-card-address {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin: 0.4rem 0 0.6rem 0;
-            line-height: 1.35;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .shop-card-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.72rem;
-            color: #64748b;
-        }
-
-        .shop-card-coords {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .shop-actions {
-            display: flex;
-            gap: 0.4rem;
-        }
-
-        .icon-btn {
-            background: transparent;
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
-            width: 26px;
-            height: 26px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .icon-btn:hover {
-            color: white;
-            border-color: var(--primary-light);
-            background: rgba(99, 102, 241, 0.2);
-        }
-
-        /* Map Container */
-        #map {
-            flex: 1;
-            height: 100%;
-            background: #0b0f19;
-        }
-
-        /* Custom Leaflet Map Controls */
+        /* Custom Leaflet Light UI Overrides */
         .leaflet-popup-content-wrapper {
-            background: #1e293b !important;
-            color: #f8fafc !important;
-            border-radius: var(--radius-md) !important;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
-            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-radius: 0.875rem !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05) !important;
         }
-
         .leaflet-popup-tip {
-            background: #1e293b !important;
+            background-color: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
         }
-
         .leaflet-popup-content {
-            margin: 0.85rem 1rem !important;
+            margin: 14px 16px !important;
             line-height: 1.4 !important;
         }
-
-        .popup-header {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #ffffff;
-            margin-bottom: 0.25rem;
+        .leaflet-bar {
+            border: none !important;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+            border-radius: 0.625rem !important;
+            overflow: hidden !important;
+        }
+        .leaflet-bar a {
+            background-color: #ffffff !important;
+            color: #475569 !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            width: 36px !important;
+            height: 36px !important;
+            line-height: 36px !important;
+            font-size: 14px !important;
+        }
+        .leaflet-bar a:hover {
+            background-color: #f8fafc !important;
+            color: #4f46e5 !important;
+        }
+        .leaflet-control-layers {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 0.75rem !important;
+            color: #1e293b !important;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+            padding: 8px 12px !important;
+            font-size: 12px !important;
+            font-weight: 500 !important;
         }
 
-        .popup-distance {
-            display: inline-block;
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-            padding: 0.15rem 0.5rem;
-            border-radius: 10px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .popup-address {
-            font-size: 0.8rem;
-            color: #94a3b8;
-            margin-bottom: 0.75rem;
-        }
-
-        .popup-btn-nav {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            background: var(--accent-gradient);
-            color: white;
-            text-decoration: none;
-            padding: 0.4rem 0.8rem;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        /* Delivery Distance Tree Structure */
-        .delivery-tree {
-            background: rgba(15, 23, 42, 0.85);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            padding: 0.55rem 0.75rem;
-            margin: 0.55rem 0;
-            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-            font-size: 0.76rem;
-            line-height: 1.45;
-            color: #e2e8f0;
-        }
-
-        .tree-root {
-            font-weight: 700;
-            color: #f1f5f9;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            font-size: 0.78rem;
-        }
-
-        .tree-line {
-            color: #64748b;
-            padding-left: 0.35rem;
-            line-height: 1.1;
-            user-select: none;
-        }
-
-        .tree-branch {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            padding-left: 0.35rem;
-            flex-wrap: wrap;
-        }
-
-        .tree-elbow {
-            color: #818cf8;
-            font-weight: 800;
-            user-select: none;
-        }
-
-        .tree-val {
-            font-weight: 700;
-            color: #ffffff;
-        }
-
-        .tree-desc {
-            color: #94a3b8;
-        }
-
-        .tree-tag {
-            font-size: 0.65rem;
-            font-weight: 700;
-            padding: 0.1rem 0.35rem;
-            border-radius: 4px;
-            letter-spacing: 0.02em;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            text-transform: uppercase;
-        }
-
-        .tag-postgis {
-            background: rgba(99, 102, 241, 0.2);
-            color: #a5b4fc;
-            border: 1px solid rgba(99, 102, 241, 0.4);
-        }
-
-        .tag-osrm {
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.4);
-        }
-
-        .tree-time {
-            font-size: 0.68rem;
-            color: #fbbf24;
-            background: rgba(245, 158, 11, 0.15);
-            padding: 0.05rem 0.35rem;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-
-        .popup-btn-route {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            background: rgba(99, 102, 241, 0.25);
-            color: #a5b4fc;
-            border: 1px solid rgba(99, 102, 241, 0.5);
-            padding: 0.4rem 0.75rem;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .popup-btn-route:hover {
-            background: rgba(99, 102, 241, 0.45);
-            color: white;
-        }
-
-        .btn-route-card {
-            background: rgba(99, 102, 241, 0.15);
-            color: #a5b4fc;
-            border: 1px solid rgba(99, 102, 241, 0.3);
-            padding: 0.22rem 0.55rem;
-            border-radius: 6px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            transition: all 0.2s;
-        }
-
-        .btn-route-card:hover {
-            background: rgba(99, 102, 241, 0.35);
-            color: white;
-            border-color: var(--primary-light);
-        }
-
-        .active-route-pill {
-            position: absolute;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(99, 102, 241, 0.6);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
-            border-radius: 30px;
-            padding: 0.45rem 1.1rem;
-            color: white;
-            font-size: 0.8rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            z-index: 1000;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .active-route-pill.hidden {
-            display: none;
-        }
-
-        .clear-route-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: var(--text-muted);
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
-
-        .clear-route-btn:hover {
-            background: rgba(239, 68, 68, 0.3);
-            color: #f87171;
-        }
-
-        /* Marker Pulses */
+        /* Marker Pulse Animation */
         .user-center-marker {
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
         }
-
         .user-center-pin {
             width: 22px;
             height: 22px;
-            background: #ec4899;
+            background: #e11d48;
             border: 3px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 15px rgba(236, 72, 153, 0.8);
+            box-shadow: 0 4px 12px rgba(225, 29, 72, 0.5);
             z-index: 2;
         }
-
         .user-center-pulse {
             position: absolute;
-            width: 44px;
-            height: 44px;
+            width: 46px;
+            height: 46px;
             border-radius: 50%;
-            background: rgba(236, 72, 153, 0.35);
-            animation: pulse-ring 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+            background: rgba(225, 29, 72, 0.25);
+            animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
             z-index: 1;
         }
-
-        @keyframes pulse-ring {
-            0% { transform: scale(0.6); opacity: 0.9; }
-            100% { transform: scale(1.8); opacity: 0; }
+        @keyframes ping {
+            75%, 100% {
+                transform: scale(1.9);
+                opacity: 0;
+            }
         }
 
         .shop-marker-icon {
@@ -756,385 +127,312 @@
             justify-content: center;
             width: 34px;
             height: 34px;
-            background: #6366f1;
-            border: 2px solid #ffffff;
+            background: #4f46e5;
+            border: 2.5px solid #ffffff;
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            box-shadow: 0 6px 14px rgba(79, 70, 229, 0.35);
             color: white;
-            transition: transform 0.2s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-
         .shop-marker-icon i {
             transform: rotate(45deg);
-            font-size: 14px;
+            font-size: 13px;
         }
-
         .shop-marker-icon.highlighted {
-            background: #ec4899;
-            transform: rotate(-45deg) scale(1.2);
+            background: #e11d48;
+            box-shadow: 0 8px 20px rgba(225, 29, 72, 0.5);
+            transform: rotate(-45deg) scale(1.28);
             z-index: 1000 !important;
         }
 
-        /* Floating Info Box on Map */
-        .map-hint-box {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border-color);
-            padding: 0.6rem 1rem;
-            border-radius: 20px;
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            pointer-events: none;
-            z-index: 800;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            box-shadow: var(--shadow-card);
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
-
-        /* Modal for Add Shop */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(6px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.3s ease;
+        ::-webkit-scrollbar-track {
+            background: #f8fafc;
         }
-
-        .modal-overlay.open {
-            opacity: 1;
-            pointer-events: auto;
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
         }
-
-        .modal {
-            background: #1e293b;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            width: 90%;
-            max-width: 480px;
-            padding: 1.75rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-            transform: scale(0.95);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .modal-overlay.open .modal {
-            transform: scale(1);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.25rem;
-        }
-
-        .modal-title {
-            font-size: 1.15rem;
-            font-weight: 700;
-        }
-
-        .close-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            font-size: 1.25rem;
-            cursor: pointer;
-        }
-
-        .close-btn:hover {
-            color: white;
-        }
-
-        /* Toast notifications */
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #1e293b;
-            color: white;
-            border-left: 4px solid var(--primary);
-            border-radius: 8px;
-            padding: 0.85rem 1.25rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            z-index: 3000;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            transform: translateY(-100px);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .toast.show {
-            transform: translateY(0);
-        }
-
-        .toast.toast-error {
-            border-left-color: var(--danger);
-        }
-
-        .toast.toast-success {
-            border-left-color: var(--success);
-        }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 2.5rem 1rem;
-            color: var(--text-muted);
-        }
-
-        .empty-state i {
-            font-size: 2.5rem;
-            color: #475569;
-            margin-bottom: 0.75rem;
-        }
-
-        /* Responsive */
-        @media (max-width: 900px) {
-            .main-container {
-                flex-direction: column;
-            }
-            .sidebar {
-                width: 100%;
-                height: 45%;
-                border-right: none;
-                border-bottom: 1px solid var(--border-color);
-            }
-            #map {
-                height: 55%;
-            }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 h-screen flex flex-col font-sans overflow-hidden select-none">
 
-    <!-- Header Bar -->
-    <header>
-        <div class="brand">
-            <div class="brand-logo">
-                <i class="fa-solid fa-store"></i>
+    <!-- Top Navigation Header -->
+    <header class="h-16 bg-white border-b border-slate-200 px-4 md:px-6 flex items-center justify-between z-30 shrink-0 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-rose-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                <i class="fa-solid fa-store text-lg"></i>
             </div>
             <div>
-                <div class="brand-title">FestiBuy Nearby Explorer</div>
-                <div class="brand-subtitle">PostGIS Spatial Query Engine</div>
+                <h1 class="text-base md:text-lg font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
+                    FestiBuy
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/80">Spatial Explorer</span>
+                </h1>
+                <p class="text-xs text-slate-500 font-medium tracking-wide flex items-center gap-1.5">
+                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    PostGIS Spatial Engine &bull; OSRM Road Router
+                </p>
             </div>
         </div>
-        
-        <div class="header-actions">
-            <div class="api-badge" id="apiStatusBadge">
-                <span class="status-dot" id="apiStatusDot"></span>
-                <span id="apiStatusText">Backend API: 9090</span>
+
+        <!-- Header Actions -->
+        <div class="flex items-center gap-2.5">
+            <div id="apiStatusBadge" class="hidden sm:flex items-center gap-2 bg-slate-100/90 border border-slate-200 px-3 py-1.5 rounded-full text-xs text-slate-700">
+                <span id="apiStatusDot" class="w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400"></span>
+                <span id="apiStatusText" class="font-medium">Backend: 9090</span>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="openAddShopModal()">
+
+            <button onclick="toggleSidebar()" class="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition">
+                <i class="fa-solid fa-bars-staggered text-indigo-600"></i>
+                <span class="hidden md:inline">Sidebar</span>
+            </button>
+
+            <button onclick="openAddShopModal()" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-sm shadow-indigo-600/20">
                 <i class="fa-solid fa-plus"></i> Add Shop
             </button>
         </div>
     </header>
 
-    <!-- Main Workspace -->
-    <div class="main-container">
-        
-        <!-- Sidebar Controls & Shop Results -->
-        <aside class="sidebar">
+    <!-- Main Workspace Container -->
+    <div class="flex flex-1 h-[calc(100vh-64px)] relative overflow-hidden">
+
+        <!-- Sidebar Panel -->
+        <aside id="mainSidebar" class="w-full md:w-[410px] bg-white border-r border-slate-200 flex flex-col shrink-0 z-20 transition-all duration-300 ease-in-out absolute md:relative h-full overflow-hidden shadow-xl md:shadow-none">
             
-            <!-- Spatial Search Parameters -->
-            <div class="sidebar-section">
-                <div class="section-title">
-                    <i class="fa-solid fa-location-crosshairs"></i> Search Location & Radius
+            <!-- Section: Search Filters -->
+            <div class="p-4 border-b border-slate-200 space-y-3.5 bg-slate-50/70">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-location-crosshairs text-indigo-600"></i> Location & Radius
+                    </span>
+                    <button onclick="locateUser()" class="text-xs text-slate-600 hover:text-slate-900 flex items-center gap-1 bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-xs hover:border-slate-300 transition font-medium">
+                        <i class="fa-solid fa-crosshairs text-rose-500"></i> My GPS
+                    </button>
                 </div>
 
-                <div class="input-grid">
-                    <div class="form-group">
-                        <label for="inputLat">Latitude (°N)</label>
-                        <div class="input-wrapper">
-                            <i class="fa-solid fa-arrows-up-down"></i>
-                            <input type="number" id="inputLat" step="0.0001" value="13.0580" placeholder="13.0580">
+                <!-- Lat & Lng Row -->
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Latitude (°N)</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-arrows-up-down absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                            <input type="number" id="inputLat" step="0.0001" value="13.0580" 
+                                   class="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition shadow-xs"/>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="inputLng">Longitude (°E)</label>
-                        <div class="input-wrapper">
-                            <i class="fa-solid fa-arrows-left-right"></i>
-                            <input type="number" id="inputLng" step="0.0001" value="80.2430" placeholder="80.2430">
-                        </div>
-                    </div>
-
-                    <div class="form-group full-width">
-                        <div class="slider-container">
-                            <div class="slider-header">
-                                <label for="inputRadiusSlider" style="margin: 0;">Search Radius</label>
-                                <span class="radius-val-badge" id="radiusBadge">5.0 km</span>
-                            </div>
-                            <input type="range" id="inputRadiusSlider" min="0.5" max="50" step="0.5" value="5.0">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Longitude (°E)</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-arrows-left-right absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                            <input type="number" id="inputLng" step="0.0001" value="80.2430" 
+                                   class="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition shadow-xs"/>
                         </div>
                     </div>
                 </div>
 
-                <!-- Location Quick Presets -->
-                <label style="margin-top: 0.6rem;">Quick Presets (Sample Locations):</label>
-                <div class="preset-chips">
-                    <div class="chip" onclick="setCoordinates(13.0580, 80.2430, 5, 'Teynampet')">
-                        <i class="fa-solid fa-location-dot"></i> Teynampet
+                <!-- Radius Range & Quick Buttons -->
+                <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-2 shadow-xs">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-700 font-semibold">Search Radius</span>
+                        <span id="radiusBadge" class="bg-indigo-600 text-white font-bold px-2.5 py-0.5 rounded-full text-[11px] shadow-xs">
+                            5.0 km
+                        </span>
                     </div>
-                    <div class="chip" onclick="setCoordinates(13.0560, 80.2200, 5, 'Nungambakkam')">
-                        <i class="fa-solid fa-location-dot"></i> Nungambakkam
-                    </div>
-                    <div class="chip" onclick="setCoordinates(13.0450, 80.2500, 5, 'Alwarpet')">
-                        <i class="fa-solid fa-location-dot"></i> Alwarpet
-                    </div>
-                    <div class="chip" onclick="setCoordinates(13.0380, 80.2150, 5, 'Vadapalani')">
-                        <i class="fa-solid fa-location-dot"></i> Vadapalani
-                    </div>
-                    <div class="chip" onclick="setCoordinates(12.9249, 80.1000, 10, 'Tambaram')">
-                        <i class="fa-solid fa-location-dot"></i> Tambaram
+
+                    <input type="range" id="inputRadiusSlider" min="0.5" max="50" step="0.5" value="5.0" 
+                           class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"/>
+
+                    <!-- Radius Quick Ticks -->
+                    <div class="grid grid-cols-5 gap-1.5 pt-1">
+                        <button type="button" onclick="setRadius(1)" class="rad-btn text-[10px] font-semibold py-1 rounded-md bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 border border-slate-200 transition">1 km</button>
+                        <button type="button" onclick="setRadius(3)" class="rad-btn text-[10px] font-semibold py-1 rounded-md bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 border border-slate-200 transition">3 km</button>
+                        <button type="button" onclick="setRadius(5)" class="rad-btn active text-[10px] font-semibold py-1 rounded-md bg-indigo-600 text-white border border-indigo-600 transition shadow-xs">5 km</button>
+                        <button type="button" onclick="setRadius(10)" class="rad-btn text-[10px] font-semibold py-1 rounded-md bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 border border-slate-200 transition">10 km</button>
+                        <button type="button" onclick="setRadius(25)" class="rad-btn text-[10px] font-semibold py-1 rounded-md bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 border border-slate-200 transition">25 km</button>
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
-                <div class="btn-group">
-                    <button class="btn btn-primary" id="btnSearch" onclick="fetchNearbyShops()">
+                <!-- Quick Presets -->
+                <div>
+                    <span class="block text-[11px] font-semibold text-slate-500 mb-1.5">Sample Chennai Areas:</span>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="setCoordinates(13.0580, 80.2430, 5, 'Teynampet')" class="text-[11px] font-medium bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 px-2.5 py-1 rounded-md border border-slate-200 shadow-xs transition flex items-center gap-1">
+                            <i class="fa-solid fa-location-dot text-indigo-600 text-[10px]"></i> Teynampet
+                        </button>
+                        <button onclick="setCoordinates(13.0560, 80.2200, 5, 'Nungambakkam')" class="text-[11px] font-medium bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 px-2.5 py-1 rounded-md border border-slate-200 shadow-xs transition flex items-center gap-1">
+                            <i class="fa-solid fa-location-dot text-indigo-600 text-[10px]"></i> Nungambakkam
+                        </button>
+                        <button onclick="setCoordinates(13.0450, 80.2500, 5, 'Alwarpet')" class="text-[11px] font-medium bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 px-2.5 py-1 rounded-md border border-slate-200 shadow-xs transition flex items-center gap-1">
+                            <i class="fa-solid fa-location-dot text-indigo-600 text-[10px]"></i> Alwarpet
+                        </button>
+                        <button onclick="setCoordinates(13.0380, 80.2150, 5, 'Vadapalani')" class="text-[11px] font-medium bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 px-2.5 py-1 rounded-md border border-slate-200 shadow-xs transition flex items-center gap-1">
+                            <i class="fa-solid fa-location-dot text-indigo-600 text-[10px]"></i> Vadapalani
+                        </button>
+                        <button onclick="setCoordinates(12.9249, 80.1000, 10, 'Tambaram')" class="text-[11px] font-medium bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 px-2.5 py-1 rounded-md border border-slate-200 shadow-xs transition flex items-center gap-1">
+                            <i class="fa-solid fa-location-dot text-indigo-600 text-[10px]"></i> Tambaram
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Primary Action Buttons -->
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button id="btnSearch" onclick="fetchNearbyShops()" class="col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2">
                         <i class="fa-solid fa-magnifying-glass-location"></i> Find Nearby Shops
                     </button>
-                    <button class="btn btn-secondary" onclick="locateUser()">
-                        <i class="fa-solid fa-crosshairs"></i> My Location
-                    </button>
-                    <button class="btn btn-secondary" onclick="fetchAllShops()">
-                        <i class="fa-solid fa-list"></i> View All
+                    <button onclick="fetchAllShops()" class="col-span-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-semibold py-2 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-list text-slate-500"></i> View All Registered Shops
                     </button>
                 </div>
             </div>
 
-            <!-- API Configuration Settings Collapsible -->
-            <div class="sidebar-section" style="padding-top: 0.85rem; padding-bottom: 0.85rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
-                        <i class="fa-solid fa-server"></i> API Base URL:
+            <!-- API Endpoint Config -->
+            <div class="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs text-slate-500">
+                <span class="flex items-center gap-1.5 font-medium">
+                    <i class="fa-solid fa-server text-slate-400 text-[11px]"></i> Backend URL:
+                </span>
+                <input type="text" id="apiBaseUrl" value="http://localhost:9090" 
+                       class="w-48 bg-white border border-slate-300 rounded px-2 py-0.5 text-right text-xs text-slate-800 font-mono focus:border-indigo-500 outline-none"
+                       onchange="checkApiHealth()"/>
+            </div>
+
+            <!-- Discovered Shops Results Section -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-store text-indigo-600"></i> Discovered Shops
                     </span>
-                    <input type="text" id="apiBaseUrl" value="http://localhost:9090" 
-                           style="width: 60%; padding: 0.3rem 0.5rem; font-size: 0.75rem; text-align: right;" 
-                           onchange="checkApiHealth()">
-                </div>
-            </div>
-
-            <!-- Search Results List -->
-            <div class="sidebar-section" style="flex: 1; overflow-y: auto;">
-                <div class="results-header">
-                    <div class="section-title" style="margin-bottom: 0;">
-                        <i class="fa-solid fa-shop"></i> Shops Discovered
-                    </div>
-                    <span class="count-badge" id="resultCountBadge">0 Shops</span>
+                    <span id="resultCountBadge" class="bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded-full text-[11px]">
+                        0 Shops
+                    </span>
                 </div>
 
-                <div class="shops-list" id="shopsListContainer">
-                    <div class="empty-state">
-                        <i class="fa-solid fa-map-location-dot"></i>
-                        <p>Click "Find Nearby Shops" or click any point on the map to search shops within radius.</p>
+                <!-- Dynamic Shop Cards Container -->
+                <div id="shopsListContainer" class="space-y-3">
+                    <div class="text-center py-12 px-4 text-slate-400 bg-white rounded-xl border border-slate-200 shadow-xs">
+                        <i class="fa-solid fa-map-location-dot text-3xl mb-2 text-slate-300"></i>
+                        <p class="text-xs font-medium text-slate-500">Click "Find Nearby Shops" or search any place to explore.</p>
                     </div>
                 </div>
             </div>
 
         </aside>
 
-        <!-- Leaflet Map View -->
-        <div id="map"></div>
+        <!-- Leaflet Map Container -->
+        <div class="flex-1 h-full relative z-10">
+            
+            <div id="map" class="w-full h-full bg-slate-100"></div>
 
-        <!-- Active Road Route Floating Pill -->
-        <div class="active-route-pill hidden" id="activeRoutePill">
-            <i class="fa-solid fa-route" style="color: #38bdf8;"></i>
-            <span id="activeRouteText">OSRM Route</span>
-            <button class="clear-route-btn" title="Clear Route" onclick="clearActiveRoute()">&times;</button>
+            <!-- Floating Location Search Bar on Map -->
+            <div id="mapSearchContainer" class="absolute top-4 left-4 z-[1000] w-80 sm:w-96 max-w-[calc(100%-2rem)]">
+                <div class="relative flex items-center bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-lg shadow-slate-900/5 p-1.5 transition focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20">
+                    <i class="fa-solid fa-magnifying-glass text-indigo-600 text-xs ml-2.5 mr-2 shrink-0"></i>
+                    <input type="text" id="mapSearchInput" placeholder="Search address, landmark, or city..." autocomplete="off"
+                           class="w-full bg-transparent text-xs text-slate-900 placeholder-slate-400 outline-none pr-7 font-medium"/>
+                    
+                    <!-- Search Spinner & Clear Button -->
+                    <div id="searchLoader" class="hidden absolute right-2.5 top-2.5 text-indigo-600 text-xs">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    </div>
+                    <button id="searchClearBtn" onclick="clearLocationSearch()" class="hidden absolute right-2 top-1.5 w-6 h-6 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center text-xs transition">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Autocomplete Dropdown -->
+                <div id="searchDropdown" class="hidden mt-1.5 bg-white/98 backdrop-blur-md border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-72 overflow-y-auto divide-y divide-slate-100"></div>
+            </div>
+
+            <!-- Floating Active Road Route Banner -->
+            <div id="activeRoutePill" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur-md border border-indigo-200 shadow-xl rounded-full px-4 py-1.5 text-xs text-slate-800 flex items-center gap-3">
+                <i class="fa-solid fa-route text-indigo-600 text-sm"></i>
+                <span id="activeRouteText" class="font-medium">OSRM Route</span>
+                <button onclick="clearActiveRoute()" title="Clear route" class="w-5 h-5 rounded-full hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center text-xs transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Floating Map Usage Hint -->
+            <div class="hidden sm:flex absolute bottom-5 right-5 z-[1000] pointer-events-none bg-white/90 backdrop-blur-md border border-slate-200 shadow-md rounded-full px-3.5 py-1.5 text-[11px] text-slate-600 items-center gap-2">
+                <i class="fa-solid fa-hand-pointer text-indigo-600"></i>
+                <span>Click anywhere on map to relocate &bull; Drag center marker</span>
+            </div>
+
         </div>
 
-        <!-- Floating Hint on Map -->
-        <div class="map-hint-box">
-            <i class="fa-solid fa-hand-pointer" style="color: var(--primary-light);"></i>
-            <span>Click map to relocate search center • Drag marker to adjust</span>
-        </div>
     </div>
 
     <!-- Modal: Add New Shop -->
-    <div class="modal-overlay" id="addShopModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">
-                    <i class="fa-solid fa-store" style="color: var(--primary);"></i> Add New Shop
+    <div id="addShopModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[2000] p-4">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-store text-indigo-600"></i> Add New Shop
                 </h3>
-                <button class="close-btn" onclick="closeAddShopModal()">&times;</button>
+                <button onclick="closeAddShopModal()" class="text-slate-400 hover:text-slate-600 transition">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
             </div>
-            
-            <form id="addShopForm" onsubmit="handleCreateShop(event)">
-                <div class="form-group" style="margin-bottom: 0.85rem;">
-                    <label for="shopName">Shop Name *</label>
-                    <div class="input-wrapper">
-                        <i class="fa-solid fa-tag"></i>
-                        <input type="text" id="shopName" required placeholder="e.g. Royal Organic Store">
+
+            <form onsubmit="handleCreateShop(event)" class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Shop Name *</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-tag absolute left-3 top-3 text-slate-400 text-xs"></i>
+                        <input type="text" id="shopName" required placeholder="e.g. Royal Organic Store" 
+                               class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"/>
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 0.85rem;">
-                    <label for="shopAddress">Address</label>
-                    <div class="input-wrapper">
-                        <i class="fa-solid fa-location-pin"></i>
-                        <input type="text" id="shopAddress" placeholder="e.g. 15 Anna Salai, Chennai">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Address</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-location-pin absolute left-3 top-3 text-slate-400 text-xs"></i>
+                        <input type="text" id="shopAddress" placeholder="e.g. 15 Anna Salai, Chennai" 
+                               class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"/>
                     </div>
                 </div>
 
-                <div class="input-grid" style="margin-bottom: 1.25rem;">
-                    <div class="form-group">
-                        <label for="newShopLat">Latitude *</label>
-                        <div class="input-wrapper">
-                            <i class="fa-solid fa-arrows-up-down"></i>
-                            <input type="number" id="newShopLat" step="0.0001" required placeholder="13.0580">
-                        </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Latitude *</label>
+                        <input type="number" id="newShopLat" step="0.0001" required placeholder="13.0580" 
+                               class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"/>
                     </div>
-
-                    <div class="form-group">
-                        <label for="newShopLng">Longitude *</label>
-                        <div class="input-wrapper">
-                            <i class="fa-solid fa-arrows-left-right"></i>
-                            <input type="number" id="newShopLng" step="0.0001" required placeholder="80.2430">
-                        </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Longitude *</label>
+                        <input type="number" id="newShopLng" step="0.0001" required placeholder="80.2430" 
+                               class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"/>
                     </div>
                 </div>
 
-                <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-                    <button type="button" class="btn btn-secondary" onclick="closeAddShopModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary" style="grid-column: auto;">
-                        <i class="fa-solid fa-check"></i> Save Shop
-                    </button>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeAddShopModal()" class="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-md shadow-indigo-600/20">Save Shop</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div class="toast" id="toast">
-        <i class="fa-solid fa-circle-info" id="toastIcon"></i>
-        <span id="toastMessage">Notification message</span>
+    <!-- Floating Toast Notification -->
+    <div id="toast" class="hidden fixed top-5 right-5 z-[3000] bg-white border border-slate-200 shadow-xl rounded-xl px-4 py-3 text-xs text-slate-800 flex items-center gap-2.5 transition-all">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
+        <span id="toastMessage" class="font-semibold">Notification</span>
     </div>
 
     <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script>
-        // --- Application State ---
+        // --- State Management ---
         let map;
         let searchCenterMarker = null;
         let radiusCircle = null;
@@ -1142,63 +440,58 @@
         let currentRouteLayer = null;
         const osrmCache = new Map();
         let currentShops = [];
-        let activeShopId = null;
+        let searchDebounceTimeout = null;
 
-        // Auto-detect base URL (if served from Spring Boot, use relative or current origin)
+        // Auto-detect backend host
         const currentOrigin = window.location.origin;
         if (currentOrigin.startsWith('http://localhost') || currentOrigin.startsWith('http://127.0.0.1')) {
             document.getElementById('apiBaseUrl').value = currentOrigin;
         }
 
-        // --- Initialize Leaflet Map ---
+        // --- Initialize Map ---
         function initMap() {
             const defaultLat = parseFloat(document.getElementById('inputLat').value) || 13.0580;
             const defaultLng = parseFloat(document.getElementById('inputLng').value) || 80.2430;
             const defaultRadiusKm = parseFloat(document.getElementById('inputRadiusSlider').value) || 5.0;
 
-            // Create Leaflet Map
             map = L.map('map', {
                 center: [defaultLat, defaultLng],
                 zoom: 13,
                 zoomControl: false
             });
 
-            // Modern Zoom Control position
             L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-            // 100% Free Tile Layers (No API Key Required)
+            // Free Base Maps
             const osmStandard = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
                 maxZoom: 19
             });
 
             const esriStreet = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012',
+                attribution: 'Tiles &copy; Esri',
                 maxZoom: 19
             });
 
             const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+                attribution: 'Tiles &copy; Esri',
                 maxZoom: 19
             });
 
-            // Default to OpenStreetMap Standard
             osmStandard.addTo(map);
 
-            // Layer Switcher Control (Top Right)
             const baseMaps = {
                 "🗺️ OpenStreetMap": osmStandard,
                 "🏙️ Esri Streets": esriStreet,
-                "🛰️ Satellite Imagery": esriSatellite
+                "🛰️ Satellite": esriSatellite
             };
             L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
             shopMarkersLayer.addTo(map);
 
-            // Update user center marker and radius circle
             updateSearchCenter(defaultLat, defaultLng, defaultRadiusKm);
 
-            // Map click listener: moves search center & updates coordinates
+            // Map click listener
             map.on('click', function(e) {
                 const lat = Number(e.latlng.lat.toFixed(6));
                 const lng = Number(e.latlng.lng.toFixed(6));
@@ -1208,12 +501,10 @@
                 
                 const radius = parseFloat(document.getElementById('inputRadiusSlider').value);
                 updateSearchCenter(lat, lng, radius);
-                
-                // Auto-trigger nearby shops query
                 fetchNearbyShops();
             });
 
-            // Setup Slider Sync
+            // Radius Slider Listener
             const slider = document.getElementById('inputRadiusSlider');
             const badge = document.getElementById('radiusBadge');
             
@@ -1229,11 +520,14 @@
                 fetchNearbyShops();
             });
 
-            // Coordinate Inputs change listeners
+            // Coordinate inputs listeners
             document.getElementById('inputLat').addEventListener('change', onCoordsInputChange);
             document.getElementById('inputLng').addEventListener('change', onCoordsInputChange);
 
-            // Initial Health Check & Initial Load
+            // Init Geocoding Search
+            initLocationSearch();
+
+            // Initial check and load
             checkApiHealth().then(() => {
                 fetchNearbyShops();
             });
@@ -1246,20 +540,20 @@
             if (!isNaN(lat) && !isNaN(lng)) {
                 updateSearchCenter(lat, lng, radius);
                 map.panTo([lat, lng]);
+                fetchNearbyShops();
             }
         }
 
-        // --- Update Search Center Pin & Radius Circle Overlay ---
+        // --- Update Search Center Pin & Circle ---
         function updateSearchCenter(lat, lng, radiusKm) {
             clearActiveRoute();
             const radiusMeters = radiusKm * 1000;
 
-            // Search Center Custom Animated Pin
             const centerIcon = L.divIcon({
                 className: 'user-center-marker',
                 html: `<div class="user-center-pulse"></div><div class="user-center-pin"></div>`,
-                iconSize: [44, 44],
-                iconAnchor: [22, 22]
+                iconSize: [46, 46],
+                iconAnchor: [23, 23]
             });
 
             if (!searchCenterMarker) {
@@ -1282,16 +576,15 @@
                 searchCenterMarker.setLatLng([lat, lng]);
             }
 
-            // Radius Circle Overlay
             if (!radiusCircle) {
                 radiusCircle = L.circle([lat, lng], {
                     radius: radiusMeters,
-                    color: '#6366f1',
+                    color: '#4f46e5',
                     weight: 2,
-                    opacity: 0.8,
+                    opacity: 0.7,
                     fillColor: '#6366f1',
-                    fillOpacity: 0.12,
-                    dashArray: '4, 8'
+                    fillOpacity: 0.08,
+                    dashArray: '6, 8'
                 }).addTo(map);
             } else {
                 radiusCircle.setLatLng([lat, lng]);
@@ -1299,31 +592,48 @@
             }
         }
 
-        // --- Set Coordinates Programmatically (Preset chips) ---
+        // --- Set Coordinates Programmatically ---
         function setCoordinates(lat, lng, radiusKm, name) {
             document.getElementById('inputLat').value = lat;
             document.getElementById('inputLng').value = lng;
-            document.getElementById('inputRadiusSlider').value = radiusKm;
-            document.getElementById('radiusBadge').innerText = `${radiusKm.toFixed(1)} km`;
-
+            setRadius(radiusKm);
             updateSearchCenter(lat, lng, radiusKm);
             map.flyTo([lat, lng], 13, { duration: 1 });
             showToast(`Selected location: ${name}`, 'success');
             fetchNearbyShops();
         }
 
-        // --- Browser Geolocation API ---
+        // --- Set Radius Preset ---
+        function setRadius(km) {
+            document.getElementById('inputRadiusSlider').value = km;
+            document.getElementById('radiusBadge').innerText = `${km.toFixed(1)} km`;
+
+            document.querySelectorAll('.rad-btn').forEach(btn => {
+                if (btn.innerText.startsWith(`${km} `)) {
+                    btn.className = 'rad-btn active text-[10px] font-semibold py-1 rounded-md bg-indigo-600 text-white border border-indigo-600 transition shadow-xs';
+                } else {
+                    btn.className = 'rad-btn text-[10px] font-semibold py-1 rounded-md bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 border border-slate-200 transition';
+                }
+            });
+
+            const lat = parseFloat(document.getElementById('inputLat').value);
+            const lng = parseFloat(document.getElementById('inputLng').value);
+            updateSearchCenter(lat, lng, km);
+            fetchNearbyShops();
+        }
+
+        // --- HTML5 Geolocation ---
         function locateUser() {
             if (!navigator.geolocation) {
                 showToast('Geolocation is not supported by your browser', 'error');
                 return;
             }
 
-            showToast('Acquiring current GPS location...', 'info');
+            showToast('Getting GPS location...', 'info');
             navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = Number(position.coords.latitude.toFixed(6));
-                    const lng = Number(position.coords.longitude.toFixed(6));
+                (pos) => {
+                    const lat = Number(pos.coords.latitude.toFixed(6));
+                    const lng = Number(pos.coords.longitude.toFixed(6));
                     const radius = parseFloat(document.getElementById('inputRadiusSlider').value);
 
                     document.getElementById('inputLat').value = lat;
@@ -1331,42 +641,41 @@
 
                     updateSearchCenter(lat, lng, radius);
                     map.flyTo([lat, lng], 14, { duration: 1.2 });
-                    showToast('Location identified!', 'success');
+                    showToast('Location updated!', 'success');
                     fetchNearbyShops();
                 },
                 (err) => {
-                    showToast(`Location error: ${err.message}`, 'error');
+                    showToast(`GPS error: ${err.message}`, 'error');
                 },
                 { enableHighAccuracy: true, timeout: 8000 }
             );
         }
 
-        // --- Check Backend API Status ---
+        // --- Check Backend API ---
         async function checkApiHealth() {
             const baseUrl = document.getElementById('apiBaseUrl').value.trim();
             const statusDot = document.getElementById('apiStatusDot');
             const statusText = document.getElementById('apiStatusText');
 
             try {
-                // Ping GET /api/shops to check server reachability
-                const response = await fetch(`${baseUrl}/api/shops`, { method: 'GET' });
-                if (response.ok) {
-                    statusDot.className = 'status-dot online';
-                    statusText.innerText = 'Backend API: Online';
+                const res = await fetch(`${baseUrl}/api/shops`, { method: 'GET' });
+                if (res.ok) {
+                    statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500';
+                    statusText.innerText = 'Backend: Online';
                     return true;
                 } else {
-                    statusDot.className = 'status-dot offline';
-                    statusText.innerText = 'Backend API: Error (' + response.status + ')';
+                    statusDot.className = 'w-2 h-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500';
+                    statusText.innerText = `Backend: HTTP ${res.status}`;
                     return false;
                 }
             } catch (err) {
-                statusDot.className = 'status-dot offline';
-                statusText.innerText = 'Backend API: Offline / Unreachable';
+                statusDot.className = 'w-2 h-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500';
+                statusText.innerText = 'Backend: Offline';
                 return false;
             }
         }
 
-        // --- Fetch Nearby Shops API (GET /api/shops/nearby?lat=...&lng=...&radius=...) ---
+        // --- Fetch Nearby Shops API ---
         async function fetchNearbyShops() {
             const baseUrl = document.getElementById('apiBaseUrl').value.trim();
             const lat = parseFloat(document.getElementById('inputLat').value);
@@ -1374,7 +683,7 @@
             const radius = parseFloat(document.getElementById('inputRadiusSlider').value);
 
             if (isNaN(lat) || isNaN(lng) || isNaN(radius)) {
-                showToast('Please enter valid latitude, longitude, and radius.', 'error');
+                showToast('Please enter valid coordinates and radius.', 'error');
                 return;
             }
 
@@ -1387,37 +696,37 @@
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
-                    throw new Error(`Server returned HTTP ${response.status}: ${response.statusText}`);
+                    throw new Error(`Server returned HTTP ${response.status}`);
                 }
 
                 const data = await response.json();
                 currentShops = data;
-                renderShopResults(data, true);
+                renderShopResults(data);
                 renderShopMarkers(data);
                 enrichShopsWithOsrm(data);
                 showToast(`Found ${data.length} shop(s) within ${radius} km!`, 'success');
                 checkApiHealth();
             } catch (error) {
-                console.error('Fetch Nearby Shops Error:', error);
+                console.error('Nearby query error:', error);
                 showToast(`Failed to fetch shops: ${error.message}`, 'error');
-                renderEmptyState(`Failed to connect to backend (${baseUrl}). Make sure Spring Boot is running on port 9090.`);
+                renderEmptyState(`Cannot connect to ${baseUrl}. Make sure Spring Boot is running.`);
             } finally {
                 btn.innerHTML = `<i class="fa-solid fa-magnifying-glass-location"></i> Find Nearby Shops`;
                 btn.disabled = false;
             }
         }
 
-        // --- Fetch All Shops API (GET /api/shops) ---
+        // --- Fetch All Shops API ---
         async function fetchAllShops() {
             const baseUrl = document.getElementById('apiBaseUrl').value.trim();
-            showToast('Loading all registered shops...', 'info');
+            showToast('Loading all shops...', 'info');
 
             try {
                 const response = await fetch(`${baseUrl}/api/shops`);
-                if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
                 currentShops = data;
-                renderShopResults(data, false);
+                renderShopResults(data);
                 renderShopMarkers(data);
                 enrichShopsWithOsrm(data);
 
@@ -1425,46 +734,48 @@
                     const group = L.featureGroup(shopMarkersLayer.getLayers());
                     map.fitBounds(group.getBounds().pad(0.2));
                 }
-                showToast(`Loaded ${data.length} total shop(s)`, 'success');
+                showToast(`Loaded ${data.length} total shops`, 'success');
             } catch (error) {
-                showToast(`Error fetching all shops: ${error.message}`, 'error');
+                showToast(`Error fetching shops: ${error.message}`, 'error');
             }
         }
 
-        // --- Delivery Distance Tree Component (User -> Straight-Line -> Driving Distance OSRM) ---
+        // --- Delivery Distance Tree HTML Component ---
         function renderDeliveryTreeHtml(shop, idPrefix = '') {
             const straightDist = (shop.distanceKm !== undefined && shop.distanceKm !== null) 
                 ? `${shop.distanceKm} km` 
                 : 'N/A';
             const drivingDist = (shop.drivingDistanceKm !== undefined && shop.drivingDistanceKm !== null)
                 ? `${shop.drivingDistanceKm} km` 
-                : `<i class="fa-solid fa-spinner fa-spin" style="font-size:0.65rem;"></i>`;
+                : `<i class="fa-solid fa-circle-notch fa-spin text-[10px] text-indigo-500"></i>`;
             const timeDisplay = shop.drivingDuration ? 'inline-block' : 'none';
             const timeVal = shop.drivingDuration || '';
 
             return `
-                <div class="delivery-tree">
-                    <div class="tree-root"><i class="fa-solid fa-location-crosshairs" style="color: #ec4899;"></i> <span>User</span></div>
-                    <div class="tree-line">│</div>
-                    <div class="tree-branch">
-                        <span class="tree-elbow">├──</span>
-                        <span class="tree-val">${straightDist}</span>
-                        <span class="tree-desc">straight-line</span>
-                        <span class="tree-tag tag-postgis">PostGIS</span>
+                <div class="bg-slate-50 border border-slate-200/90 rounded-lg p-2.5 my-2 font-mono text-[11px] leading-snug">
+                    <div class="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
+                        <i class="fa-solid fa-circle-user text-rose-500 text-xs"></i> User
                     </div>
-                    <div class="tree-line">│</div>
-                    <div class="tree-branch">
-                        <span class="tree-elbow">└──</span>
-                        <span class="tree-val" id="${idPrefix}osrm-dist-${shop.id}">${drivingDist}</span>
-                        <span class="tree-desc">driving distance</span>
-                        <span class="tree-tag tag-osrm">OSRM</span>
-                        <span class="tree-time" id="${idPrefix}osrm-time-${shop.id}" style="display:${timeDisplay};">${timeVal}</span>
+                    <div class="text-slate-400 pl-1 leading-none">│</div>
+                    <div class="flex items-center gap-1.5 pl-1 flex-wrap">
+                        <span class="text-indigo-500 font-bold">├──</span>
+                        <span class="font-bold text-slate-900">${straightDist}</span>
+                        <span class="text-slate-500">straight-line</span>
+                        <span class="bg-indigo-100 text-indigo-700 border border-indigo-200 font-sans font-bold px-1.5 py-0.2 rounded text-[9px] uppercase">PostGIS</span>
+                    </div>
+                    <div class="text-slate-400 pl-1 leading-none">│</div>
+                    <div class="flex items-center gap-1.5 pl-1 flex-wrap">
+                        <span class="text-indigo-500 font-bold">└──</span>
+                        <span class="font-bold text-slate-900" id="${idPrefix}osrm-dist-${shop.id}">${drivingDist}</span>
+                        <span class="text-slate-500">driving distance</span>
+                        <span class="bg-emerald-100 text-emerald-800 border border-emerald-200 font-sans font-bold px-1.5 py-0.2 rounded text-[9px] uppercase">OSRM</span>
+                        <span class="bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.2 rounded text-[10px] font-semibold" id="${idPrefix}osrm-time-${shop.id}" style="display:${timeDisplay};">${timeVal}</span>
                     </div>
                 </div>
             `;
         }
 
-        // --- OSRM Driving Distance & Route Service ---
+        // --- OSRM Routing Service ---
         async function fetchOsrmRoute(userLat, userLng, shopLat, shopLng) {
             const cacheKey = `${Number(userLat).toFixed(4)},${Number(userLng).toFixed(4)}->${Number(shopLat).toFixed(4)},${Number(shopLng).toFixed(4)}`;
             if (osrmCache.has(cacheKey)) {
@@ -1490,12 +801,12 @@
                     return routeData;
                 }
             } catch (err) {
-                console.warn('OSRM route fetch failed for shop coordinates:', err);
+                console.warn('OSRM route fetch failed:', err);
             }
             return null;
         }
 
-        // Asynchronously enrich loaded shops with OSRM driving distance & travel time
+        // Asynchronously enrich loaded shops with OSRM driving distance & time
         function enrichShopsWithOsrm(shops) {
             const userLat = parseFloat(document.getElementById('inputLat').value);
             const userLng = parseFloat(document.getElementById('inputLng').value);
@@ -1510,7 +821,6 @@
                         shop.drivingDuration = route.durationText;
                         shop.routeCoordinates = route.coordinates;
 
-                        // Update card in sidebar
                         const cardDist = document.getElementById(`card-osrm-dist-${shop.id}`);
                         const cardTime = document.getElementById(`card-osrm-time-${shop.id}`);
                         if (cardDist) cardDist.innerText = `${route.distanceKm} km`;
@@ -1519,7 +829,6 @@
                             cardTime.style.display = 'inline-block';
                         }
 
-                        // Update popup on map if already open
                         const popDist = document.getElementById(`pop-osrm-dist-${shop.id}`);
                         const popTime = document.getElementById(`pop-osrm-time-${shop.id}`);
                         if (popDist) popDist.innerText = `${route.distanceKm} km`;
@@ -1553,7 +862,6 @@
             shop.drivingDuration = route.durationText;
             shop.routeCoordinates = route.coordinates;
 
-            // Update card in sidebar
             const cardDist = document.getElementById(`card-osrm-dist-${shop.id}`);
             const cardTime = document.getElementById(`card-osrm-time-${shop.id}`);
             if (cardDist) cardDist.innerText = `${route.distanceKm} km`;
@@ -1562,7 +870,6 @@
                 cardTime.style.display = 'inline-block';
             }
 
-            // Update popup if open
             const popDist = document.getElementById(`pop-osrm-dist-${shop.id}`);
             const popTime = document.getElementById(`pop-osrm-time-${shop.id}`);
             if (popDist) popDist.innerText = `${route.distanceKm} km`;
@@ -1575,19 +882,17 @@
                 map.removeLayer(currentRouteLayer);
             }
 
-            // Convert [lng, lat] GeoJSON coordinates to Leaflet [lat, lng]
             const latLngs = route.coordinates.map(pt => [pt[1], pt[0]]);
 
-            // Outer soft glow line + high-contrast neon driving line
             const glowLine = L.polyline(latLngs, {
                 color: '#6366f1',
                 weight: 7,
-                opacity: 0.45
+                opacity: 0.35
             });
 
             const routeLine = L.polyline(latLngs, {
-                color: '#38bdf8',
-                weight: 4,
+                color: '#4f46e5',
+                weight: 4.5,
                 opacity: 0.95,
                 lineCap: 'round',
                 lineJoin: 'round'
@@ -1595,17 +900,16 @@
 
             currentRouteLayer = L.featureGroup([glowLine, routeLine]).addTo(map);
 
-            // Update top floating pill
             const pill = document.getElementById('activeRoutePill');
             const pillText = document.getElementById('activeRouteText');
             if (pill && pillText) {
-                pillText.innerHTML = `<strong>${escapeHtml(shop.name)}</strong>: ${route.distanceKm} km driving (${route.durationText}) &bull; ${shop.distanceKm != null ? shop.distanceKm + ' km aerial' : ''}`;
+                pillText.innerHTML = `<strong>${escapeHtml(shop.name)}</strong>: <span class="text-indigo-700 font-bold">${route.distanceKm} km</span> driving (${route.durationText})`;
                 pill.classList.remove('hidden');
             }
 
             map.fitBounds(currentRouteLayer.getBounds(), { padding: [60, 60] });
             highlightShopCard(shopId);
-            showToast(`OSRM Driving Route: ${route.distanceKm} km (${route.durationText})`, 'success');
+            showToast(`OSRM Route: ${route.distanceKm} km (${route.durationText})`, 'success');
         }
 
         function clearActiveRoute() {
@@ -1640,22 +944,21 @@
                 const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${shop.latitude},${shop.longitude}`;
 
                 const popupContent = `
-                    <div class="popup-header">${escapeHtml(shop.name)}</div>
-                    <div class="popup-address"><i class="fa-solid fa-location-dot"></i> ${escapeHtml(shop.address || 'No address provided')}</div>
+                    <div class="font-bold text-sm text-slate-900 mb-0.5">${escapeHtml(shop.name)}</div>
+                    <div class="text-xs text-slate-500 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-location-dot text-indigo-600"></i> ${escapeHtml(shop.address || 'No address provided')}</div>
                     ${renderDeliveryTreeHtml(shop, 'pop-')}
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.6rem;">
-                        <button class="popup-btn-route" onclick="drawRouteForShop(${shop.id})">
+                    <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100">
+                        <button onclick="drawRouteForShop(${shop.id})" class="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-md text-xs font-semibold transition">
                             <i class="fa-solid fa-route"></i> Road Route
                         </button>
-                        <a href="${directionsUrl}" target="_blank" class="popup-btn-nav">
-                            <i class="fa-solid fa-diamond-turn-right"></i> Maps
+                        <a href="${directionsUrl}" target="_blank" class="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 transition">
+                            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Maps
                         </a>
                     </div>
                 `;
 
                 marker.bindPopup(popupContent);
                 
-                // When popup is opened, ensure calculated distance is populated into popup DOM
                 marker.on('popupopen', () => {
                     if (shop.drivingDistanceKm) {
                         const popDist = document.getElementById(`pop-osrm-dist-${shop.id}`);
@@ -1678,48 +981,57 @@
         }
 
         // --- Render Shop Cards in Sidebar ---
-        function renderShopResults(shops, isNearbyMode) {
+        function renderShopResults(shops) {
             const container = document.getElementById('shopsListContainer');
             const countBadge = document.getElementById('resultCountBadge');
 
             countBadge.innerText = `${shops.length} ${shops.length === 1 ? 'Shop' : 'Shops'}`;
 
             if (!shops || shops.length === 0) {
-                renderEmptyState('No shops found in this area. Try increasing the search radius or selecting a different center on the map.');
+                renderEmptyState('No shops found within this radius. Try widening search radius or selecting another center.');
                 return;
             }
 
             let html = '';
             shops.forEach(shop => {
                 const distanceBadge = (shop.distanceKm !== undefined && shop.distanceKm !== null)
-                    ? `<span class="distance-pill"><i class="fa-solid fa-route"></i> ${shop.distanceKm} km</span>`
+                    ? `<span class="bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2 py-0.5 rounded-full text-[11px] whitespace-nowrap"><i class="fa-solid fa-route mr-1"></i>${shop.distanceKm} km</span>`
                     : '';
 
                 html += `
-                    <div class="shop-card" id="card-shop-${shop.id}" onclick="focusShop(${shop.id}, ${shop.latitude}, ${shop.longitude})">
-                        <div class="shop-card-title">
-                            <span>${escapeHtml(shop.name)}</span>
+                    <div id="card-shop-${shop.id}" onclick="focusShop(${shop.id}, ${shop.latitude}, ${shop.longitude})" 
+                         class="shop-card group bg-white hover:bg-slate-50 border border-slate-200 hover:border-indigo-400 rounded-xl p-3.5 cursor-pointer transition-all duration-200 shadow-xs hover:shadow-md relative overflow-hidden">
+                        
+                        <div class="flex items-start justify-between gap-2 mb-1">
+                            <h4 class="font-bold text-xs text-slate-900 group-hover:text-indigo-600 transition">${escapeHtml(shop.name)}</h4>
                             ${distanceBadge}
                         </div>
-                        <div class="shop-card-address">
-                            <i class="fa-solid fa-location-dot" style="margin-right: 4px; color: #6366f1;"></i>
+
+                        <p class="text-[11px] text-slate-500 mb-2 line-clamp-2 leading-relaxed">
+                            <i class="fa-solid fa-location-dot text-indigo-500 mr-1 text-[10px]"></i>
                             ${escapeHtml(shop.address || 'Address not listed')}
-                        </div>
+                        </p>
+
                         ${renderDeliveryTreeHtml(shop, 'card-')}
-                        <div class="shop-card-meta">
-                            <div class="shop-card-coords">
+
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-400">
+                            <div class="font-mono text-[10px] space-x-1.5 text-slate-500">
                                 <span>Lat: ${Number(shop.latitude).toFixed(4)}</span>
                                 <span>Lng: ${Number(shop.longitude).toFixed(4)}</span>
                             </div>
-                            <div class="shop-actions">
-                                <button class="btn-route-card" title="Draw OSRM driving route" onclick="event.stopPropagation(); drawRouteForShop(${shop.id})">
-                                    <i class="fa-solid fa-route"></i> Route
+
+                            <div class="flex items-center gap-1.5">
+                                <button title="Draw driving route" onclick="event.stopPropagation(); drawRouteForShop(${shop.id})" 
+                                        class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1">
+                                    <i class="fa-solid fa-route text-[10px]"></i> Route
                                 </button>
-                                <button class="icon-btn" title="Center Map" onclick="event.stopPropagation(); focusShop(${shop.id}, ${shop.latitude}, ${shop.longitude})">
+                                <button title="Center map" onclick="event.stopPropagation(); focusShop(${shop.id}, ${shop.latitude}, ${shop.longitude})" 
+                                        class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition text-xs border border-slate-200">
                                     <i class="fa-solid fa-crosshairs"></i>
                                 </button>
-                                <a class="icon-btn" title="Open in Google Maps" href="https://www.google.com/maps/dir/?api=1&destination=${shop.latitude},${shop.longitude}" target="_blank" onclick="event.stopPropagation()">
-                                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                <a title="Google Maps" href="https://www.google.com/maps/dir/?api=1&destination=${shop.latitude},${shop.longitude}" target="_blank" onclick="event.stopPropagation()" 
+                                   class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition text-xs border border-slate-200">
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
                                 </a>
                             </div>
                         </div>
@@ -1733,9 +1045,9 @@
         function renderEmptyState(message) {
             const container = document.getElementById('shopsListContainer');
             container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fa-solid fa-store-slash"></i>
-                    <p>${message}</p>
+                <div class="text-center py-12 px-4 text-slate-500 bg-white rounded-xl border border-slate-200 shadow-xs">
+                    <i class="fa-solid fa-store-slash text-3xl mb-2 text-slate-300"></i>
+                    <p class="text-xs font-medium">${message}</p>
                 </div>
             `;
         }
@@ -1744,28 +1056,24 @@
         function focusShop(shopId, lat, lng) {
             highlightShopCard(shopId);
 
-            // Pan map
             map.flyTo([lat, lng], Math.max(map.getZoom(), 15), { duration: 0.8 });
 
-            // Open corresponding marker popup
             shopMarkersLayer.eachLayer(layer => {
                 if (layer.shopId === shopId) {
                     layer.openPopup();
                 }
             });
 
-            // Automatically draw OSRM driving road route
             drawRouteForShop(shopId);
         }
 
         function highlightShopCard(shopId) {
-            // Remove previous active classes
-            document.querySelectorAll('.shop-card').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.shop-card').forEach(el => el.classList.remove('ring-2', 'ring-indigo-500', 'border-indigo-500', 'bg-indigo-50/40'));
             document.querySelectorAll('.shop-marker-icon').forEach(el => el.classList.remove('highlighted'));
 
             const card = document.getElementById(`card-shop-${shopId}`);
             if (card) {
-                card.classList.add('active');
+                card.classList.add('ring-2', 'ring-indigo-500', 'border-indigo-500', 'bg-indigo-50/40');
                 card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
@@ -1775,18 +1083,181 @@
             }
         }
 
-        // --- Add Shop Modal Logic ---
+        // --- Location Geocoding Autocomplete Search (Nominatim) ---
+        function initLocationSearch() {
+            const mapSearchInput = document.getElementById('mapSearchInput');
+            const searchDropdown = document.getElementById('searchDropdown');
+            const searchClearBtn = document.getElementById('searchClearBtn');
+
+            if (!mapSearchInput) return;
+
+            mapSearchInput.addEventListener('input', function() {
+                const query = this.value.trim();
+                if (query.length > 0) {
+                    if (searchClearBtn) searchClearBtn.classList.remove('hidden');
+                } else {
+                    if (searchClearBtn) searchClearBtn.classList.add('hidden');
+                    if (searchDropdown) searchDropdown.classList.add('hidden');
+                    return;
+                }
+
+                clearTimeout(searchDebounceTimeout);
+                searchDebounceTimeout = setTimeout(() => {
+                    performLocationSearch(query);
+                }, 300);
+            });
+
+            mapSearchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const firstItem = searchDropdown.querySelector('.search-item');
+                    if (firstItem) {
+                        firstItem.click();
+                    } else if (this.value.trim().length > 1) {
+                        performLocationSearch(this.value.trim(), true);
+                    }
+                } else if (e.key === 'Escape') {
+                    if (searchDropdown) searchDropdown.classList.add('hidden');
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                const container = document.getElementById('mapSearchContainer');
+                if (container && !container.contains(e.target) && searchDropdown) {
+                    searchDropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        async function performLocationSearch(query, autoSelectFirst = false) {
+            if (!query || query.length < 2) return;
+
+            const searchLoader = document.getElementById('searchLoader');
+            if (searchLoader) searchLoader.classList.remove('hidden');
+
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6&addressdetails=1`;
+                const res = await fetch(url, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const results = await res.json();
+                renderSearchSuggestions(results, autoSelectFirst);
+            } catch (err) {
+                console.warn('Geocoding search error:', err);
+            } finally {
+                if (searchLoader) searchLoader.classList.add('hidden');
+            }
+        }
+
+        function renderSearchSuggestions(results, autoSelectFirst = false) {
+            const searchDropdown = document.getElementById('searchDropdown');
+            if (!searchDropdown) return;
+            searchDropdown.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                searchDropdown.innerHTML = `
+                    <div class="p-3 text-center text-slate-500 text-xs">
+                        <i class="fa-solid fa-location-slash mb-1 text-slate-400"></i><br>
+                        No matching locations found
+                    </div>
+                `;
+                searchDropdown.classList.remove('hidden');
+                return;
+            }
+
+            if (autoSelectFirst && results.length > 0) {
+                selectLocation(results[0]);
+                return;
+            }
+
+            results.forEach(item => {
+                const name = item.name || item.display_name.split(',')[0];
+                const subtitle = item.display_name;
+
+                let iconClass = 'fa-solid fa-location-dot';
+                if (item.class === 'building' || item.type === 'commercial') iconClass = 'fa-solid fa-building';
+                else if (item.class === 'highway') iconClass = 'fa-solid fa-road';
+                else if (item.class === 'amenity') iconClass = 'fa-solid fa-landmark';
+                else if (item.type === 'city' || item.type === 'suburb') iconClass = 'fa-solid fa-city';
+
+                const div = document.createElement('div');
+                div.className = 'search-item p-2.5 hover:bg-slate-50 flex items-start gap-2.5 cursor-pointer transition';
+                div.innerHTML = `
+                    <i class="${iconClass} text-indigo-600 text-xs mt-0.5 shrink-0"></i>
+                    <div class="overflow-hidden">
+                        <div class="text-xs font-bold text-slate-800 truncate">${escapeHtml(name)}</div>
+                        <div class="text-[11px] text-slate-500 truncate">${escapeHtml(subtitle)}</div>
+                    </div>
+                `;
+                div.addEventListener('click', () => {
+                    selectLocation(item);
+                });
+                searchDropdown.appendChild(div);
+            });
+
+            searchDropdown.classList.remove('hidden');
+        }
+
+        function selectLocation(item) {
+            const lat = Number(parseFloat(item.lat).toFixed(6));
+            const lon = Number(parseFloat(item.lon).toFixed(6));
+            const name = item.name || item.display_name.split(',')[0];
+
+            const mapSearchInput = document.getElementById('mapSearchInput');
+            const searchDropdown = document.getElementById('searchDropdown');
+            const searchClearBtn = document.getElementById('searchClearBtn');
+
+            if (mapSearchInput) mapSearchInput.value = name;
+            if (searchDropdown) searchDropdown.classList.add('hidden');
+            if (searchClearBtn) searchClearBtn.classList.remove('hidden');
+
+            document.getElementById('inputLat').value = lat;
+            document.getElementById('inputLng').value = lon;
+
+            const radius = parseFloat(document.getElementById('inputRadiusSlider').value);
+            updateSearchCenter(lat, lon, radius);
+
+            map.flyTo([lat, lon], 14, { duration: 1.2 });
+            showToast(`Location: ${name}`, 'success');
+            fetchNearbyShops();
+        }
+
+        function clearLocationSearch() {
+            const mapSearchInput = document.getElementById('mapSearchInput');
+            const searchClearBtn = document.getElementById('searchClearBtn');
+            const searchDropdown = document.getElementById('searchDropdown');
+
+            if (mapSearchInput) mapSearchInput.value = '';
+            if (searchClearBtn) searchClearBtn.classList.add('hidden');
+            if (searchDropdown) searchDropdown.classList.add('hidden');
+            if (mapSearchInput) mapSearchInput.focus();
+        }
+
+        // --- Sidebar & Modal UI Controls ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mainSidebar');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+            } else if (sidebar.classList.contains('md:w-0')) {
+                sidebar.classList.remove('md:w-0', 'md:overflow-hidden');
+                sidebar.classList.add('md:w-[410px]');
+            } else {
+                sidebar.classList.add('-translate-x-full', 'md:w-0', 'md:overflow-hidden');
+                sidebar.classList.remove('md:w-[410px]');
+            }
+            setTimeout(() => { map.invalidateSize(); }, 320);
+        }
+
         function openAddShopModal() {
-            // Default new shop lat/long to current map center
             const center = map.getCenter();
             document.getElementById('newShopLat').value = Number(center.lat.toFixed(6));
             document.getElementById('newShopLng').value = Number(center.lng.toFixed(6));
-            document.getElementById('addShopModal').classList.add('open');
+            document.getElementById('addShopModal').classList.remove('hidden');
         }
 
         function closeAddShopModal() {
-            document.getElementById('addShopModal').classList.remove('open');
-            document.getElementById('addShopForm').reset();
+            document.getElementById('addShopModal').classList.add('hidden');
         }
 
         async function handleCreateShop(e) {
@@ -1813,17 +1284,15 @@
                 }
 
                 const createdShop = await response.json();
-                showToast(`Shop "${createdShop.name}" added successfully!`, 'success');
+                showToast(`Shop "${createdShop.name}" added!`, 'success');
                 closeAddShopModal();
-
-                // Refresh search
                 fetchNearbyShops();
             } catch (err) {
                 showToast(`Failed to create shop: ${err.message}`, 'error');
             }
         }
 
-        // --- Toast Utility ---
+        // --- Toast System ---
         let toastTimeout;
         function showToast(message, type = 'info') {
             const toast = document.getElementById('toast');
@@ -1832,14 +1301,18 @@
 
             clearTimeout(toastTimeout);
             msgEl.innerText = message;
-            toast.className = `toast toast-${type} show`;
+            toast.classList.remove('hidden');
 
-            if (type === 'success') iconEl.className = 'fa-solid fa-circle-check';
-            else if (type === 'error') iconEl.className = 'fa-solid fa-triangle-exclamation';
-            else iconEl.className = 'fa-solid fa-circle-info';
+            if (type === 'success') {
+                iconEl.className = 'fa-solid fa-circle-check text-emerald-600 text-sm';
+            } else if (type === 'error') {
+                iconEl.className = 'fa-solid fa-triangle-exclamation text-rose-600 text-sm';
+            } else {
+                iconEl.className = 'fa-solid fa-circle-info text-indigo-600 text-sm';
+            }
 
             toastTimeout = setTimeout(() => {
-                toast.classList.remove('show');
+                toast.classList.add('hidden');
             }, 3500);
         }
 
@@ -1853,7 +1326,6 @@
                 .replace(/'/g, "&#039;");
         }
 
-        // Start initialization on DOM loaded
         window.addEventListener('DOMContentLoaded', initMap);
     </script>
 </body>
