@@ -48,6 +48,7 @@ services:
     restart: unless-stopped
     networks:
       - festibuy-net
+      - nginx-ui
 
 volumes:
   pgdata:
@@ -56,3 +57,5 @@ volumes:
 networks:
   festibuy-net:
     driver: bridge
+  nginx-ui:
+    external: true
