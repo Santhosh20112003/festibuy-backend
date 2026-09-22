@@ -1,0 +1,55 @@
+services:
+  # =======================================================
+  # PostgreSQL Database with PostGIS Spatial Extensions
+  # =======================================================
+  postgres-db:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: festibuy-postgres
+    environment:
+      POSTGRES_DB: festibuy_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: festibuy123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d festibuy_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - festibuy-net
+
+  # =======================================================
+  # FestiBuy Spring Boot Java 21 Backend Application
+  # =======================================================
+  festibuy-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: festibuy-backend
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/festibuy_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: festibuy123
+      SERVER_PORT: 9090
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    networks:
+      - festibuy-net
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  festibuy-net:
+    driver: bridge
