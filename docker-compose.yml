@@ -3,7 +3,7 @@ services:
   # PostgreSQL Database with PostGIS Spatial Extensions
   # =======================================================
   postgres-db:
-    image: postgis/postgis:16-3.4-alpine
+    image: postgis/postgis:16-3.4
     container_name: festibuy-postgres
     environment:
       POSTGRES_DB: festibuy_db
@@ -18,7 +18,8 @@ services:
       test: ["CMD-SHELL", "pg_isready -U postgres -d festibuy_db"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
     networks:
       - festibuy-net
