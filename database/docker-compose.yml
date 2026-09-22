@@ -1,6 +1,8 @@
 services:
   postgres-db:
-    image: postgis/postgis:16-3.4
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: festibuy-postgres
     environment:
       POSTGRES_DB: festibuy_db
