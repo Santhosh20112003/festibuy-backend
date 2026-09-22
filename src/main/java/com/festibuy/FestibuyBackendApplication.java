@@ -1,9 +1,9 @@
-package com.festibuy.backend;
+package com.festibuy;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication(scanBasePackages = "com.festibuy")
+@SpringBootApplication
 public class FestibuyBackendApplication {
 
 	public static void main(String[] args) {
@@ -11,4 +11,3 @@ public class FestibuyBackendApplication {
 	}
 
 }
-
