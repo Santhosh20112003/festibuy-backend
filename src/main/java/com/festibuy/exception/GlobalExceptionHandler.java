@@ -40,16 +40,40 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolationException(jakarta.validation.ConstraintViolationException ex) {
+        List<String> errors = ex.getConstraintViolations()
+                .stream()
+                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+                .collect(Collectors.toList());
+
+        log.warn("Constraint violation: {}", errors);
+        ApiResponse<Void> response = ApiResponse.error("Validation failed", errors, HttpStatus.BAD_REQUEST.value());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.springframework.web.method.annotation.HandlerMethodValidationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHandlerMethodValidationException(org.springframework.web.method.annotation.HandlerMethodValidationException ex) {
+        List<String> errors = ex.getAllErrors()
+                .stream()
+                .map(org.springframework.context.MessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.toList());
+
+        log.warn("Handler method validation failed: {}", errors);
+        ApiResponse<Void> response = ApiResponse.error("Validation failed", errors, HttpStatus.BAD_REQUEST.value());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(NoResourceFoundException ex) {
-        log.error("Resource not found: {}", ex.getMessage());
+        log.warn("Resource not found: {}", ex.getMessage());
         ApiResponse<Void> response = ApiResponse.error("Endpoint not found: " + ex.getResourcePath(), HttpStatus.NOT_FOUND.value());
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ApiResponse<Void>> handleMethodNotSupportedException(HttpRequestMethodNotSupportedException ex) {
-        log.error("Method not supported: {}", ex.getMessage());
+        log.warn("Method not supported: {}", ex.getMessage());
         ApiResponse<Void> response = ApiResponse.error("HTTP method " + ex.getMethod() + " is not supported for this endpoint", HttpStatus.METHOD_NOT_ALLOWED.value());
         return new ResponseEntity<>(response, HttpStatus.METHOD_NOT_ALLOWED);
     }

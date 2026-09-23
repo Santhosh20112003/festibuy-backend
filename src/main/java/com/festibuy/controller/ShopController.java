@@ -74,7 +74,7 @@ public class ShopController {
 
     @PostMapping("/bulk")
     @Operation(summary = "Bulk import multiple shops")
-    public ResponseEntity<List<Shop>> createShopsBulk(@Valid @RequestBody List<@Valid ShopRequestDto> requests) {
+    public ResponseEntity<List<Shop>> createShopsBulk(@RequestBody List<@Valid ShopRequestDto> requests) {
         List<Shop> createdShops = shopService.createShopsBulk(requests);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdShops);
     }
