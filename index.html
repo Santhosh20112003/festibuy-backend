@@ -444,8 +444,10 @@
 
         // Auto-detect backend host
         const currentOrigin = window.location.origin;
-        if (currentOrigin.startsWith('http://localhost') || currentOrigin.startsWith('http://127.0.0.1')) {
+        if (currentOrigin && currentOrigin !== 'null' && !currentOrigin.startsWith('file:')) {
             document.getElementById('apiBaseUrl').value = currentOrigin;
+        } else {
+            document.getElementById('apiBaseUrl').value = 'http://localhost:9090';
         }
 
         // --- Initialize Map ---
