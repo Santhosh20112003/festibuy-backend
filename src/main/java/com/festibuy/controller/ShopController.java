@@ -18,7 +18,6 @@ import com.festibuy.dto.ShopRequestDto;
 import com.festibuy.entity.Shop;
 import com.festibuy.service.ShopService;
 
-import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -40,7 +39,6 @@ public class ShopController {
 
     @GetMapping("/nearby")
     @Operation(summary = "Find nearby shops within given radius using PostGIS")
-    @RateLimiter(name = "shopApi")
     public ResponseEntity<List<NearbyShopResponse>> getNearbyShops(
             @RequestParam @NotNull(message = "Latitude is required")
             @DecimalMin("-90.0") @DecimalMax("90.0") Double lat,
@@ -58,21 +56,18 @@ public class ShopController {
 
     @GetMapping
     @Operation(summary = "Get all shops")
-    @RateLimiter(name = "shopApi")
     public ResponseEntity<List<Shop>> getAllShops() {
         return ResponseEntity.ok(shopService.getAllShops());
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get shop by ID")
-    @RateLimiter(name = "shopApi")
     public ResponseEntity<Shop> getShopById(@PathVariable Long id) {
         return ResponseEntity.ok(shopService.getShopById(id));
     }
 
     @PostMapping
     @Operation(summary = "Create a new shop")
-    @RateLimiter(name = "shopWriteApi")
     public ResponseEntity<Shop> createShop(@Valid @RequestBody ShopRequestDto request) {
         Shop createdShop = shopService.createShop(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdShop);
@@ -80,7 +75,6 @@ public class ShopController {
 
     @PostMapping("/bulk")
     @Operation(summary = "Bulk import multiple shops")
-    @RateLimiter(name = "shopWriteApi")
     public ResponseEntity<List<Shop>> createShopsBulk(
             @RequestBody
             @NotEmpty(message = "Shop list cannot be empty")

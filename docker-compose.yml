@@ -47,8 +47,10 @@ services:
       CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173,https://festibuy.saandy.in
       SWAGGER_UI_ENABLED: "false"
       SWAGGER_DOCS_ENABLED: "false"
-      RATE_LIMIT_SHOP_API: 60
-      RATE_LIMIT_WRITE_API: 15
+      RATE_LIMIT_READ_LIMIT: 60
+      RATE_LIMIT_READ_PERIOD: 60
+      RATE_LIMIT_WRITE_LIMIT: 15
+      RATE_LIMIT_WRITE_PERIOD: 60
     ports:
       - "9090:9090"
     restart: unless-stopped
